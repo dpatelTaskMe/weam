@@ -94,6 +94,7 @@ import useMCP from '@/hooks/mcp/useMCP';
 import ToolsConnected from './ToolsConnected';
 import SearchIcon from '@/icons/Search';
 import ThreeDotLoader from '../Loader/ThreeDotLoader';
+import { useResponseUpdate } from '@/hooks/chat/useResponseUpdate';
 const defaultContext = {
     type: null,
     prompt_id: undefined,
@@ -250,6 +251,24 @@ const ChatPage = memo(() => {
     const { getSeoKeyWords, isLoading, leftList, rightList, setLeftList, setRightList } = useProAgent();
 
     const socket = useSocket(); // Hook for socket connection
+    
+    // Response update functionality
+    const { handleResponseUpdate, updateConversationResponse } = useResponseUpdate({
+        onUpdateResponse: async (messageId: string, updatedResponse: string) => {
+            // Update the conversation in the state
+            setConversations(prevConversations => 
+                prevConversations.map(conv => 
+                    conv.id === messageId 
+                        ? { ...conv, response: updatedResponse }
+                        : conv
+                )
+            );
+            
+            // Here you can make an API call to persist the changes
+            // await updateResponseInDatabase(messageId, updatedResponse);
+            console.log('Response updated:', { messageId, updatedResponse });
+        }
+    });
     const { copyToClipboard, handleModelSelectionUrl, getDecodedObjectId, blockProAgentAction, handleProAgentUrlState, getAgentContent } = useConversationHelper();
     const { getChatMembers } = useChatMember();
     const { onSelectMenu } = useThunderBoltPopup({
@@ -1340,6 +1359,7 @@ const ChatPage = memo(() => {
                                                                         handleSubmitPrompt={handleSubmitPrompt}
                                                                         isStreamingLoading={isStreamingLoading}
                                                                         proAgentCode={m?.proAgentData?.code}
+                                                                        onResponseUpdate={handleResponseUpdate}
                                                                     />
                                                             }
                                                         </div>
