@@ -64,6 +64,7 @@ const HoverActionTooltip = ({ children, content, onClick, className }: HoverActi
 const HoverActionIcon = React.memo(({ content, proAgentData, conversation, sequence, onOpenThread, copyToClipboard, getAgentContent, index, chatId, socket, getAINormatChatResponse, getAICustomGPTResponse, getPerplexityResponse, getAIDocResponse, setConversations, custom_gpt_id }: HoverActionIconProps) => {
     const { isOpen, openModal, closeModal } = useModal();
     const { isOpen: isForkOpen, openModal: openForkModal, closeModal: closeForkModal } = useModal();
+    const { isOpen: isDownloadOpen, openModal: openDownloadModal, closeModal: closeDownloadModal } = useModal();
     const [forkData, setForkData] = useState([]);
 
     let copyContent = content;
@@ -161,6 +162,81 @@ const HoverActionIcon = React.memo(({ content, proAgentData, conversation, seque
             >
                 <CopyIcon className="lg:h-[15px] h-[14px] w-auto fill-b6 object-contain" />
             </HoverActionTooltip>
+            {/* Copy End */}
+
+            {/* Download start */}
+            <HoverActionTooltip
+                content='Download Response'
+                onClick={openDownloadModal}
+                className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
+            >
+                <img 
+                    src="/File-download-01.jpg" 
+                    alt="Download" 
+                    className="lg:h-[15px] h-[14px] w-auto object-contain"
+                />
+            </HoverActionTooltip>
+            {isDownloadOpen && (
+                <div className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[200px]">
+                    <div className="py-1">
+                        <button
+                            onClick={() => {
+                                const { downloadResponse } = require('@/utils/downloadUtils');
+                                downloadResponse(copyContent, 'pdf', {
+                                    title: 'AI Response',
+                                    filename: 'weam-ai-response',
+                                    includeTimestamp: true
+                                });
+                                closeDownloadModal();
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                        >
+                            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            PDF
+                        </button>
+                        
+                        <button
+                            onClick={() => {
+                                const { downloadResponse } = require('@/utils/downloadUtils');
+                                downloadResponse(copyContent, 'html', {
+                                    title: 'AI Response',
+                                    filename: 'weam-ai-response',
+                                    includeTimestamp: true
+                                });
+                                closeDownloadModal();
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                        >
+                            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            HTML
+                        </button>
+                        
+                        <button
+                            onClick={() => {
+                                const { downloadResponse } = require('@/utils/downloadUtils');
+                                downloadResponse(copyContent, 'txt', {
+                                    title: 'AI Response',
+                                    filename: 'weam-ai-response',
+                                    includeTimestamp: true
+                                });
+                                closeDownloadModal();
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                        >
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            TXT
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* Download End */}
+
             {/* {
                 conversation.length - 1 === index && (
                     <RegenerateResponse 

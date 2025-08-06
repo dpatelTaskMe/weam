@@ -244,16 +244,14 @@ const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmi
                                 </div>
                             </div>
                         ) : (
-                            <div 
-                                onClick={handleInlineEdit}
-                                className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200 group"
-                            >
-                                {MarkOutPut(answerMessage)}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <div className="bg-white shadow-md rounded-md p-2 border">
-                                        <span className="text-gray-500 text-sm">✏️ Click to edit</span>
-                                    </div>
+                            <div className="relative group">
+                                <div 
+                                    onClick={handleInlineEdit}
+                                    className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
+                                >
+                                    {MarkOutPut(answerMessage)}
                                 </div>
+
                             </div>
                         )
                     ) : (
@@ -334,16 +332,14 @@ const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmi
                                     </div>
                                 </div>
                             ) : (
-                                <div 
-                                    onClick={handleInlineEdit}
-                                    className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200 group"
-                                >
-                                    {MarkOutPut(m.response)}
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                        <div className="bg-white shadow-md rounded-md p-2 border">
-                                            <span className="text-gray-500 text-sm">✏️ Click to edit</span>
-                                        </div>
+                                <div className="relative group">
+                                    <div 
+                                        onClick={handleInlineEdit}
+                                        className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
+                                    >
+                                        {MarkOutPut(m.response)}
                                     </div>
+
                                 </div>
                             )}
                             {
@@ -441,16 +437,15 @@ const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmi
                             </div>
                         </div>
                     ) : (
-                        <div 
-                            onClick={handleInlineEdit}
-                            className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200 group"
-                        >
-                            {MarkOutPut(m.response)}
-                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <div className="bg-white shadow-md rounded-md p-2 border">
-                                    <span className="text-gray-500 text-sm">✏️ Click to edit</span>
-                                </div>
+                        <div className="relative group">
+                            <div 
+                                onClick={handleInlineEdit}
+                                className="cursor-pointer rounded-lg p-3 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-200"
+                            >
+                                {MarkOutPut(m.response)}
                             </div>
+                            
+
                         </div>
                     )}
                     {
