@@ -31,7 +31,9 @@ type HoverActionIconProps = {
     getAIDocResponse?: (payload: DocumentChatPayloadType, socket: Socket) => void,
     setConversations: (payload: ConversationType[]) => void,
     custom_gpt_id?: string,
-    getAgentContent: (proAgentData: ProAgentDataType) => string
+    getAgentContent: (proAgentData: ProAgentDataType) => string,
+    onAddToPages?: () => void,
+    hasBeenEdited?: boolean
 }
 
 type HoverActionTooltipProps = {
@@ -61,7 +63,7 @@ const HoverActionTooltip = ({ children, content, onClick, className }: HoverActi
     )
 }
 
-const HoverActionIcon = React.memo(({ content, proAgentData, conversation, sequence, onOpenThread, copyToClipboard, getAgentContent, index, chatId, socket, getAINormatChatResponse, getAICustomGPTResponse, getPerplexityResponse, getAIDocResponse, setConversations, custom_gpt_id }: HoverActionIconProps) => {
+const HoverActionIcon = React.memo(({ content, proAgentData, conversation, sequence, onOpenThread, copyToClipboard, getAgentContent, index, chatId, socket, getAINormatChatResponse, getAICustomGPTResponse, getPerplexityResponse, getAIDocResponse, setConversations, custom_gpt_id, onAddToPages, hasBeenEdited }: HoverActionIconProps) => {
     const { isOpen, openModal, closeModal } = useModal();
     const { isOpen: isForkOpen, openModal: openForkModal, closeModal: closeForkModal } = useModal();
     const { isOpen: isDownloadOpen, openModal: openDownloadModal, closeModal: closeDownloadModal } = useModal();
@@ -236,6 +238,21 @@ const HoverActionIcon = React.memo(({ content, proAgentData, conversation, seque
                 </div>
             )}
             {/* Download End */}
+
+            {/* Add to Pages - Always show for testing */}
+            {onAddToPages && (
+                <HoverActionTooltip
+                    content='Add to Pages'
+                    onClick={onAddToPages}
+                    className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
+                >
+                    <svg className="lg:h-[15px] h-[14px] w-auto fill-b6 object-contain" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                </HoverActionTooltip>
+            )}
+            {/* Debug info */}
+            {(() => { console.log('HoverActionIcon Debug:', { hasBeenEdited, hasOnAddToPages: !!onAddToPages }); return null; })()}
 
             {/* {
                 conversation.length - 1 === index && (

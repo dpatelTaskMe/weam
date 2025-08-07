@@ -80,7 +80,7 @@ const StreamingChatLoaderOption = ({ code, loading, proAgentCode }: ResponseLoad
     return loadingComponents[code] || loadingComponents[proAgentCode] || <ThreeDotLoader />;
 };
 
-const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmitPrompt, privateChat = true, isStreamingLoading, proAgentCode, onResponseUpdate }) => {
+const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmitPrompt, privateChat = true, isStreamingLoading, proAgentCode, onResponseUpdate, onResponseEdited }) => {
     const { 
         showCanvasBox, 
         handleSelectionChanges, 
@@ -115,10 +115,19 @@ const ChatResponse = ({ conversations, i, loading, answerMessage, m, handleSubmi
         setIsEditing(true);
     };
 
-    const handleInlineSave = () => {
-        setIsEditing(false);
-        if (onResponseUpdate && editContent !== m?.response) {
-            onResponseUpdate(m?.id, editContent);
+    const handleInlineSave = async () => {
+        try {
+            if (onResponseUpdate && editContent !== m?.response) {
+                await onResponseUpdate(m?.id, editContent);
+                // Notify parent that response was edited
+                if (onResponseEdited) {
+                    onResponseEdited(m?.id);
+                }
+            }
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Error saving response:', error);
+            alert('Failed to save changes. Please try again.');
         }
     };
 

@@ -11,21 +11,46 @@ export const useResponseUpdate = ({
 }: UseResponseUpdateProps = {}) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const updateResponseInDatabase = async (messageId: string, updatedResponse: string) => {
+    try {
+      const response = await fetch(`/api/message/update/${messageId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ai: updatedResponse
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error('Failed to update response in database');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error updating response in database:', error);
+      throw error;
+    }
+  };
+
   const handleResponseUpdate = useCallback(async (messageId: string, updatedResponse: string) => {
     try {
       setIsUpdating(true);
       
-      // Call the provided update function
+      // Update in database first
+      await updateResponseInDatabase(messageId, updatedResponse);
+      
+      // Then update the UI
       if (onUpdateResponse) {
         await onUpdateResponse(messageId, updatedResponse);
       }
       
-      // You can also make an API call here to persist the changes
-      // await updateResponseInDatabase(messageId, updatedResponse);
-      
     } catch (error) {
       console.error('Error updating response:', error);
-      // You might want to show a toast notification here
+      throw error; // Re-throw to let the component handle the error
     } finally {
       setIsUpdating(false);
     }

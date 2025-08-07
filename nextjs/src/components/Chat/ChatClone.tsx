@@ -95,6 +95,7 @@ import ToolsConnected from './ToolsConnected';
 import SearchIcon from '@/icons/Search';
 import ThreeDotLoader from '../Loader/ThreeDotLoader';
 import { useResponseUpdate } from '@/hooks/chat/useResponseUpdate';
+import { usePageOperations } from '@/hooks/chat/usePageOperations';
 const defaultContext = {
     type: null,
     prompt_id: undefined,
@@ -252,6 +253,9 @@ const ChatPage = memo(() => {
 
     const socket = useSocket(); // Hook for socket connection
     
+    // Track which responses have been edited
+    const [editedResponses, setEditedResponses] = useState<Set<string>>(new Set());
+
     // Response update functionality
     const { handleResponseUpdate, updateConversationResponse } = useResponseUpdate({
         onUpdateResponse: async (messageId: string, updatedResponse: string) => {
@@ -264,9 +268,22 @@ const ChatPage = memo(() => {
                 )
             );
             
-            // Here you can make an API call to persist the changes
-            // await updateResponseInDatabase(messageId, updatedResponse);
+            // Mark this response as edited
+            setEditedResponses(prev => new Set([...prev, messageId]));
+            
             console.log('Response updated:', { messageId, updatedResponse });
+        }
+    });
+
+    // Page operations
+    const { createPageFromResponse, isCreatingPage } = usePageOperations({
+        onPageCreated: (pageData) => {
+            console.log('Page created successfully:', pageData);
+            alert('Page created successfully!');
+        },
+        onError: (error) => {
+            console.error('Error creating page:', error);
+            alert('Failed to create page. Please try again.');
         }
     });
     const { copyToClipboard, handleModelSelectionUrl, getDecodedObjectId, blockProAgentAction, handleProAgentUrlState, getAgentContent } = useConversationHelper();
@@ -305,6 +322,29 @@ const ChatPage = memo(() => {
     const handleWebSearchClick = useCallback(() => {
         dispatch(setIsWebSearchActive(!isWebSearchActive));
     }, [isWebSearchActive]);
+
+    const handleAddToPages = useCallback(async (message: any) => {
+        console.log('handleAddToPages called with message:', message);
+        try {
+            const pageData = {
+                originalMessageId: message.id,
+                title: `Page from ${message.responseModel || 'AI'} Response`,
+                content: message.response,
+                chatId: message.chatId,
+                user: message.user,
+                brain: message.brain,
+                model: message.model,
+                tokens: message.tokens,
+                responseModel: message.responseModel,
+                responseAPI: message.responseAPI,
+                companyId: message.companyId
+            };
+            
+            await createPageFromResponse(pageData);
+        } catch (error) {
+            console.error('Error creating page:', error);
+        }
+    }, [createPageFromResponse]);
 
     const handleImageConversation = useCallback((files: UploadedFileType[]) => {
         const hasImage = files.some((file) => file?.mime_type?.startsWith('image/'));
@@ -1246,7 +1286,12 @@ const ChatPage = memo(() => {
                                                             handleOpenThreadModal(m,THREAD_MESSAGE_TYPE.QUESTION)
                                                         }
                                                         copyToClipboard={copyToClipboard}
-                                                        getAgentContent={getAgentContent} 
+                                                        getAgentContent={getAgentContent}
+                                                        onAddToPages={() => {
+                                                            console.log('onAddToPages prop called for message:', m.id);
+                                                            handleAddToPages(m);
+                                                        }}
+                                                        hasBeenEdited={editedResponses.has(m.id)}
                                                     />
                                                 }
                                                 {/* Hover Icons End */}
@@ -1315,7 +1360,7 @@ const ChatPage = memo(() => {
                                                             handleOpenThreadModal(m,THREAD_MESSAGE_TYPE.ANSWER)
                                                         }
                                                         copyToClipboard={copyToClipboard}
-                                                        getAgentContent={getAgentContent} 
+                                                        getAgentContent={getAgentContent}
                                                         index={i}
                                                         chatId={params.id}
                                                         socket={socket}
@@ -1325,6 +1370,11 @@ const ChatPage = memo(() => {
                                                         getPerplexityResponse={getPerplexityResponse}
                                                         getAIDocResponse={getAIDocResponse}
                                                         custom_gpt_id={persistTagData?.custom_gpt_id}
+                                                        onAddToPages={() => {
+                                                            console.log('onAddToPages prop called for message:', m.id);
+                                                            handleAddToPages(m);
+                                                        }}
+                                                        hasBeenEdited={editedResponses.has(m.id)}
                                                     />
                                                 }
                                                 {/* Hover Icons End */}
@@ -1360,6 +1410,9 @@ const ChatPage = memo(() => {
                                                                         isStreamingLoading={isStreamingLoading}
                                                                         proAgentCode={m?.proAgentData?.code}
                                                                         onResponseUpdate={handleResponseUpdate}
+                                                                        onResponseEdited={(messageId) => {
+                                                                            setEditedResponses(prev => new Set([...prev, messageId]));
+                                                                        }}
                                                                     />
                                                             }
                                                         </div>
