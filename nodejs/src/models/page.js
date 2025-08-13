@@ -126,5 +126,7 @@ const schema = new Schema(
 schema.index({ createdAt: -1 });
 schema.index({ updatedAt: -1 });
 
+schema.plugin(mongoosePaginate);
+
 module.exports = model('page', schema);
 

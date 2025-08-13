@@ -1,10 +1,21 @@
 const Page = require('../models/page');
 const { formatUser, encryptedData, getCompanyId, decryptedData } = require('../utils/helper');
 const { handleError } = require('../utils/helper');
+const dbService = require('../utils/dbService');
 
 const createPageFromResponse = async (req) => {
     try {
+        console.log('createPageFromResponse service - Request body:', JSON.stringify(req.body, null, 2));
         const { originalMessageId, title, content, chatId, user, brain, model, tokens, responseModel, responseAPI, companyId } = req.body;
+        
+        console.log('createPageFromResponse service - Brain data:', brain);
+        console.log('createPageFromResponse service - Brain type:', typeof brain);
+        
+        // Check if a page with the same title already exists for this company
+        const existingPage = await Page.findOne({ 
+            title: title, 
+            companyId: companyId 
+        });
         
         // Encrypt the content in the same format as AI responses
         const contentData = {
@@ -13,6 +24,7 @@ const createPageFromResponse = async (req) => {
             }
         };
         
+        // Prepare page data
         const pageData = {
             title: title,
             content: encryptedData(JSON.stringify(contentData)),
@@ -34,9 +46,40 @@ const createPageFromResponse = async (req) => {
             seq: Date.now()
         };
         
-        const page = await Page.create(pageData);
-        return page;
+        if (existingPage) {
+            // Update existing page
+            console.log(`Updating existing page with title: ${title} (ID: ${existingPage._id})`);
+            const updatedPage = await Page.findByIdAndUpdate(
+                existingPage._id,
+                { 
+                    ...pageData, 
+                    updatedAt: new Date(),
+                    // Keep the original createdAt timestamp
+                    createdAt: existingPage.createdAt
+                },
+                { new: true }
+            );
+            return { 
+                status: 200, 
+                code: 'UPDATED', 
+                message: 'Page updated successfully', 
+                data: updatedPage,
+                isUpdate: true
+            };
+        } else {
+            // Create new page
+            console.log(`Creating new page with title: ${title}`);
+            const page = await Page.create(pageData);
+            return { 
+                status: 201, 
+                code: 'CREATED', 
+                message: 'Page created successfully', 
+                data: page,
+                isUpdate: false
+            };
+        }
     } catch (error) {
+        console.log('createPageFromResponse service - Error:', error);
         handleError(error, 'Error - createPageFromResponse');
     }
 };
@@ -45,7 +88,24 @@ const getAllPages = async (req) => {
     try {
         const { query = {}, options = {} } = req.body;
         
-        const result = await dbService.getAllDocuments(Page, query, options);
+        // Handle both nested and flat query structures
+        const actualQuery = query.query || query;
+        
+        console.log('getAllPages service - Query:', JSON.stringify(actualQuery, null, 2));
+        console.log('getAllPages service - Options:', JSON.stringify(options, null, 2));
+        
+        // Ensure proper sorting for descending order
+        const finalOptions = {
+            ...options,
+            sort: { createdAt: -1 } // Always sort by newest first
+        };
+        
+        console.log('getAllPages service - Final Options:', JSON.stringify(finalOptions, null, 2));
+        
+        const result = await dbService.getAllDocuments(Page, actualQuery, finalOptions);
+        
+        console.log('getAllPages service - Result paginator:', JSON.stringify(result.paginator, null, 2));
+        console.log('getAllPages service - Result data count:', result.data?.length || 0);
         
         // Decrypt content for each page
         const finalResult = await Promise.all(result.data.map(async (page) => {
@@ -65,9 +125,9 @@ const getAllPages = async (req) => {
         }));
         
         return {
-            status: result.status,
-            code: result.code,
-            message: result.message,
+            status: 200,
+            code: 'SUCCESS',
+            message: 'Pages retrieved successfully',
             data: finalResult,
             paginator: result.paginator,
         };
@@ -79,20 +139,10 @@ const getAllPages = async (req) => {
 const getPageById = async (req) => {
     try {
         const page = await Page.findById(req.params.id);
-        
         if (!page) {
             throw new Error('Page not found');
         }
-        
-        // Decrypt content
-        const decryptedContent = page.content ? JSON.parse(await decryptedData(page.content)) : null;
-        const decryptedAi = page.ai ? JSON.parse(await decryptedData(page.ai)) : null;
-        
-        return {
-            ...page._doc,
-            content: decryptedContent?.data?.content || '',
-            ai: decryptedAi?.data?.content || ''
-        };
+        return page;
     } catch (error) {
         handleError(error, 'Error - getPageById');
     }
@@ -100,23 +150,34 @@ const getPageById = async (req) => {
 
 const updatePage = async (req) => {
     try {
-        let updateData = req.body;
+        const { title, content, brain, model, tokens, responseModel, responseAPI } = req.body;
         
-        // If updating content, encrypt it
-        if (req.body.content) {
-            const contentData = {
-                data: {
-                    content: req.body.content
-                }
-            };
-            updateData = {
-                ...req.body,
-                content: encryptedData(JSON.stringify(contentData)),
-                ai: encryptedData(JSON.stringify(contentData))
-            };
+        let updateData = {};
+        if (title) updateData.title = title;
+        if (content) {
+            const contentData = { data: { content: content } };
+            updateData.content = encryptedData(JSON.stringify(contentData));
+            updateData.ai = encryptedData(JSON.stringify(contentData));
+        }
+        if (brain) updateData.brain = brain;
+        if (model) updateData.model = model;
+        if (tokens) updateData.tokens = tokens;
+        if (responseModel) updateData.responseModel = responseModel;
+        if (responseAPI) updateData.responseAPI = responseAPI;
+        
+        updateData.updatedAt = new Date();
+        
+        const page = await Page.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
+        
+        if (!page) {
+            throw new Error('Page not found');
         }
         
-        return Page.findByIdAndUpdate({ _id: req.params.id }, updateData, { new: true });
+        return page;
     } catch (error) {
         handleError(error, 'Error - updatePage');
     }
@@ -124,7 +185,11 @@ const updatePage = async (req) => {
 
 const deletePage = async (req) => {
     try {
-        return Page.findByIdAndDelete({ _id: req.params.id });
+        const page = await Page.findByIdAndDelete(req.params.id);
+        if (!page) {
+            throw new Error('Page not found');
+        }
+        return { message: 'Page deleted successfully' };
     } catch (error) {
         handleError(error, 'Error - deletePage');
     }
@@ -137,4 +202,3 @@ module.exports = {
     updatePage,
     deletePage
 };
-

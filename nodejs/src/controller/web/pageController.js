@@ -3,23 +3,34 @@ const { handleError } = require('../../utils/helper');
 
 const createPageFromResponse = async (req, res) => {
     try {
+        console.log('createPageFromResponse - Request body:', JSON.stringify(req.body, null, 2));
         const result = await pageService.createPageFromResponse(req);
-        return res.status(200).json({
-            status: 200,
-            code: 'SUCCESS',
-            message: 'Page created successfully',
-            data: result
+        
+        // Set appropriate status code and message based on whether it's an update or create
+        const statusCode = result.isUpdate ? 200 : 201;
+        const message = result.isUpdate ? 'Page updated successfully' : 'Page created successfully';
+        
+        return res.status(statusCode).json({
+            status: statusCode,
+            code: result.code,
+            message: message,
+            data: result.data,
+            isUpdate: result.isUpdate
         });
     } catch (error) {
+        console.log('createPageFromResponse - Error:', error);
         handleError(error, res);
     }
 };
 
 const getAllPages = async (req, res) => {
     try {
+        console.log('getAllPages controller - Request body:', JSON.stringify(req.body, null, 2));
         const result = await pageService.getAllPages(req);
+        console.log('getAllPages controller - Result:', JSON.stringify(result, null, 2));
         return res.status(200).json(result);
     } catch (error) {
+        console.log('getAllPages controller - Error:', error);
         handleError(error, res);
     }
 };
@@ -73,4 +84,3 @@ module.exports = {
     updatePage,
     deletePage
 };
-

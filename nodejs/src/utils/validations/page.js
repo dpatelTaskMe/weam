@@ -12,9 +12,9 @@ const createPageKeys = joi.object({
         .string()
         .regex(/^[0-9a-fA-F]{24}$/)
         .required(),
-    user: joi.object(userSchemaKeys).required(),
-    brain: joi.object(brainSchemaKeys).required(),
-    model: joi.object(botSchemaKeys).required(),
+    user: joi.object().unknown(true).required(),
+    brain: joi.object().unknown(true).optional(),
+    model: joi.object().unknown(true).required(),
     tokens: joi.object({
         totalUsed: joi.number().optional(),
         promptT: joi.number().optional(),
@@ -45,4 +45,5 @@ module.exports = {
     updatePageKeys,
     getAllPagesKeys
 };
+
 

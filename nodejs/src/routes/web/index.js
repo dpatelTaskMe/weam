@@ -31,5 +31,6 @@ router.use('/teamBrain',teamBrainRouter)
 router.use('/teamWorkspace',teamWorkspaceRouter)
 router.use('/bookmark', require('./bookmark'));
 router.use('/page', require('./pages'));
+router.use('/minio', require('./minio'));
 
 module.exports = router;

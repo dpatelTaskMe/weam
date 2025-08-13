@@ -235,6 +235,12 @@ const ChatInput = ({ aiModals }: ChatInputProps) => {
                 id: 4,
                 href: routes.docs,
             },
+            {
+                icon: <DocumentIcon width={20} height={20} className="fill-b6" />,
+                text: 'Pages',
+                id: 5,
+                href: routes.pages,
+            },
         ];
 
         return (

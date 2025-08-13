@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 
 interface UsePageOperationsProps {
-  onPageCreated?: (pageData: any) => void;
+  onPageCreated?: (pageData: any, isUpdate?: boolean) => void;
   onError?: (error: string) => void;
 }
 
@@ -27,6 +27,8 @@ export const usePageOperations = ({
     try {
       setIsCreatingPage(true);
       
+      console.log('usePageOperations - Sending pageData:', JSON.stringify(pageData, null, 2));
+      
       const response = await fetch('/api/page/create', {
         method: 'POST',
         headers: {
@@ -35,15 +37,19 @@ export const usePageOperations = ({
         body: JSON.stringify(pageData)
       });
 
+      console.log('usePageOperations - Response status:', response.status);
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.log('usePageOperations - Error data:', errorData);
         throw new Error(errorData.message || 'Failed to create page');
       }
 
       const result = await response.json();
+      console.log('usePageOperations - Success result:', result);
       
       if (onPageCreated) {
-        onPageCreated(result.data);
+        onPageCreated(result.data, result.isUpdate);
       }
       
       return result;
@@ -60,6 +66,8 @@ export const usePageOperations = ({
 
   const getAllPages = async (query = {}, options = {}) => {
     try {
+      console.log('usePageOperations - getAllPages called with:', { query, options });
+      
       const response = await fetch('/api/page/list', {
         method: 'POST',
         headers: {
@@ -68,12 +76,16 @@ export const usePageOperations = ({
         body: JSON.stringify({ query, options })
       });
 
+      console.log('usePageOperations - Response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.log('usePageOperations - Error response:', errorData);
         throw new Error(errorData.message || 'Failed to get pages');
       }
 
       const result = await response.json();
+      console.log('usePageOperations - Success result:', result);
       return result;
     } catch (error) {
       console.error('Error getting pages:', error);
@@ -87,7 +99,7 @@ export const usePageOperations = ({
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
 
       if (!response.ok) {
@@ -103,14 +115,14 @@ export const usePageOperations = ({
     }
   };
 
-  const updatePage = async (pageId: string, updateData: { title?: string; content?: string }) => {
+  const updatePage = async (pageId: string, updateData: any) => {
     try {
       const response = await fetch(`/api/page/${pageId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -132,7 +144,7 @@ export const usePageOperations = ({
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
       });
 
       if (!response.ok) {
@@ -154,7 +166,6 @@ export const usePageOperations = ({
     getPageById,
     updatePage,
     deletePage,
-    isCreatingPage
+    isCreatingPage,
   };
 };
-

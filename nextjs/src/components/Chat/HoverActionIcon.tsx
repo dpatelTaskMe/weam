@@ -5,6 +5,7 @@ import React, { useCallback, useState } from 'react';
 import useModal from '@/hooks/common/useModal';
 import ForkChatModal from './ForkChatModal';
 import AddNewPromptModal from '@/components/Prompts/AddNewPromptModal';
+import AddPageModal from './AddPageModal';
 import CopyIcon from '@/icons/CopyIcon';
 import {
     Tooltip,
@@ -32,8 +33,10 @@ type HoverActionIconProps = {
     setConversations: (payload: ConversationType[]) => void,
     custom_gpt_id?: string,
     getAgentContent: (proAgentData: ProAgentDataType) => string,
-    onAddToPages?: () => void,
-    hasBeenEdited?: boolean
+    onAddToPages?: (title: string) => Promise<void>,
+    onUploadToMinIO?: () => void,
+    hasBeenEdited?: boolean,
+    isAnswer?: boolean
 }
 
 type HoverActionTooltipProps = {
@@ -63,10 +66,11 @@ const HoverActionTooltip = ({ children, content, onClick, className }: HoverActi
     )
 }
 
-const HoverActionIcon = React.memo(({ content, proAgentData, conversation, sequence, onOpenThread, copyToClipboard, getAgentContent, index, chatId, socket, getAINormatChatResponse, getAICustomGPTResponse, getPerplexityResponse, getAIDocResponse, setConversations, custom_gpt_id, onAddToPages, hasBeenEdited }: HoverActionIconProps) => {
+const HoverActionIcon = React.memo(({ content, proAgentData, conversation, sequence, onOpenThread, copyToClipboard, getAgentContent, index, chatId, socket, getAINormatChatResponse, getAICustomGPTResponse, getPerplexityResponse, getAIDocResponse, setConversations, custom_gpt_id, onAddToPages, onUploadToMinIO, hasBeenEdited, isAnswer }: HoverActionIconProps) => {
     const { isOpen, openModal, closeModal } = useModal();
     const { isOpen: isForkOpen, openModal: openForkModal, closeModal: closeForkModal } = useModal();
     const { isOpen: isDownloadOpen, openModal: openDownloadModal, closeModal: closeDownloadModal } = useModal();
+    const { isOpen: isAddPageOpen, openModal: openAddPageModal, closeModal: closeAddPageModal } = useModal();
     const [forkData, setForkData] = useState([]);
 
     let copyContent = content;
@@ -166,19 +170,21 @@ const HoverActionIcon = React.memo(({ content, proAgentData, conversation, seque
             </HoverActionTooltip>
             {/* Copy End */}
 
-            {/* Download start */}
-            <HoverActionTooltip
-                content='Download Response'
-                onClick={openDownloadModal}
-                className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
-            >
-                <img 
-                    src="/File-download-01.jpg" 
-                    alt="Download" 
-                    className="lg:h-[15px] h-[14px] w-auto object-contain"
-                />
-            </HoverActionTooltip>
-            {isDownloadOpen && (
+                         {/* Download start - Only show for answers */}
+             {isAnswer && (
+                 <HoverActionTooltip
+                     content='Download Response'
+                     onClick={openDownloadModal}
+                     className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
+                 >
+                     <img 
+                         src="/File-download-01.jpg" 
+                         alt="Download" 
+                         className="lg:h-[15px] h-[14px] w-auto object-contain"
+                     />
+                 </HoverActionTooltip>
+             )}
+                         {isAnswer && isDownloadOpen && (
                 <div className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[200px]">
                     <div className="py-1">
                         <button
@@ -236,39 +242,62 @@ const HoverActionIcon = React.memo(({ content, proAgentData, conversation, seque
                         </button>
                     </div>
                 </div>
-            )}
-            {/* Download End */}
+                         )}
+             {/* Download End */}
 
-            {/* Add to Pages - Always show for testing */}
-            {onAddToPages && (
-                <HoverActionTooltip
-                    content='Add to Pages'
-                    onClick={onAddToPages}
-                    className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
-                >
-                    <svg className="lg:h-[15px] h-[14px] w-auto fill-b6 object-contain" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                </HoverActionTooltip>
-            )}
-            {/* Debug info */}
-            {(() => { console.log('HoverActionIcon Debug:', { hasBeenEdited, hasOnAddToPages: !!onAddToPages }); return null; })()}
+             {/* Add to Pages - Only show for answers */}
+             {isAnswer && onAddToPages && (
+                 <HoverActionTooltip
+                     content='Add to Pages'
+                     onClick={openAddPageModal}
+                     className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
+                 >
+                     <img 
+                         src="/Add page.svg" 
+                         alt="Add to Pages" 
+                         className="lg:h-[15px] h-[14px] w-auto object-contain"
+                     />
+                 </HoverActionTooltip>
+             )}
 
-            {/* {
-                conversation.length - 1 === index && (
-                    <RegenerateResponse 
-                        conversation={conversation} 
-                        chatId={chatId} 
-                        socket={socket} 
-                        getAINormatChatResponse={getAINormatChatResponse}
-                        getAICustomGPTResponse={getAICustomGPTResponse}
-                        getPerplexityResponse={getPerplexityResponse}
-                        getAIDocResponse={getAIDocResponse}
-                        setConversations={setConversations}
-                        custom_gpt_id={custom_gpt_id}
-                    />
-                )
-            } */}
+             {/* Upload to MinIO - Only show for answers */}
+             {isAnswer && onUploadToMinIO && (
+                 <HoverActionTooltip
+                     content='Upload to MinIO'
+                     onClick={onUploadToMinIO}
+                     className="cursor-pointer flex items-center justify-center lg:w-8 w-5 h-8 md:min-w-8 rounded-custom p-1 transition ease-in-out duration-150 [&>svg]:h-[18px] [&>svg]:w-auto [&>svg]:max-w-full [&>svg]:fill-b6 hover:bg-b12"
+                 >
+                     <img 
+                         src="/Document upload.svg" 
+                         alt="Upload to MinIO" 
+                         className="lg:h-[15px] h-[14px] w-auto object-contain"
+                     />
+                 </HoverActionTooltip>
+             )}
+
+                         {/* {
+                 conversation.length - 1 === index && (
+                     <RegenerateResponse 
+                         conversation={conversation} 
+                         chatId={chatId} 
+                         socket={socket} 
+                         getAINormatChatResponse={getAINormatChatResponse}
+                         getAICustomGPTResponse={getAICustomGPTResponse}
+                         getPerplexityResponse={getPerplexityResponse}
+                         getAIDocResponse={getAIDocResponse}
+                         setConversations={setConversations}
+                         custom_gpt_id={custom_gpt_id}
+                     />
+                 )
+             } */}
+
+             {/* Add Page Modal */}
+             <AddPageModal
+                 isOpen={isAddPageOpen}
+                 onClose={closeAddPageModal}
+                 onSave={onAddToPages}
+                 defaultTitle=""
+             />
         </div>
     );
 });

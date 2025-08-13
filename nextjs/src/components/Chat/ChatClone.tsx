@@ -96,6 +96,7 @@ import SearchIcon from '@/icons/Search';
 import ThreeDotLoader from '../Loader/ThreeDotLoader';
 import { useResponseUpdate } from '@/hooks/chat/useResponseUpdate';
 import { usePageOperations } from '@/hooks/chat/usePageOperations';
+import { useMinIOOperations } from '@/hooks/chat/useMinIOOperations';
 const defaultContext = {
     type: null,
     prompt_id: undefined,
@@ -255,7 +256,7 @@ const ChatPage = memo(() => {
     
     // Track which responses have been edited
     const [editedResponses, setEditedResponses] = useState<Set<string>>(new Set());
-
+    
     // Response update functionality
     const { handleResponseUpdate, updateConversationResponse } = useResponseUpdate({
         onUpdateResponse: async (messageId: string, updatedResponse: string) => {
@@ -268,22 +269,32 @@ const ChatPage = memo(() => {
                 )
             );
             
-            // Mark this response as edited
-            setEditedResponses(prev => new Set([...prev, messageId]));
-            
+            // Here you can make an API call to persist the changes
+            // await updateResponseInDatabase(messageId, updatedResponse);
             console.log('Response updated:', { messageId, updatedResponse });
         }
     });
 
     // Page operations
     const { createPageFromResponse, isCreatingPage } = usePageOperations({
-        onPageCreated: (pageData) => {
-            console.log('Page created successfully:', pageData);
-            alert('Page created successfully!');
+        onPageCreated: (pageData, isUpdate) => {
+            console.log('Page operation completed:', { pageData, isUpdate });
         },
         onError: (error) => {
-            console.error('Error creating page:', error);
-            alert('Failed to create page. Please try again.');
+            console.error('Error with page operation:', error);
+            Toast('Failed to process page. Please try again.', 'error');
+        }
+    });
+
+    // MinIO operations
+    const { uploadDocumentToMinIO } = useMinIOOperations({
+        onUploadSuccess: (uploadData) => {
+            console.log('Document uploaded to MinIO successfully:', uploadData);
+            Toast('Document uploaded to MinIO successfully!', 'success');
+        },
+        onError: (error) => {
+            console.error('Error uploading document to MinIO:', error);
+            Toast('Failed to upload document to MinIO. Please try again.', 'error');
         }
     });
     const { copyToClipboard, handleModelSelectionUrl, getDecodedObjectId, blockProAgentAction, handleProAgentUrlState, getAgentContent } = useConversationHelper();
@@ -323,28 +334,75 @@ const ChatPage = memo(() => {
         dispatch(setIsWebSearchActive(!isWebSearchActive));
     }, [isWebSearchActive]);
 
-    const handleAddToPages = useCallback(async (message: any) => {
-        console.log('handleAddToPages called with message:', message);
+    const handleAddToPages = useCallback(async (title: string, message: any) => {
+        console.log('handleAddToPages called with title:', title, 'message:', message);
         try {
+            // Get the current brain data
+            const currentBrainId = getDecodedObjectId();
+            console.log('Current brain ID:', currentBrainId);
+            console.log('Available brain data:', brainData);
+            
+            let brain = brainData.find((brain: BrainListType) => {
+                return brain._id === currentBrainId
+            });
+            
+            console.log('Found brain:', brain);
+            
+            // If no brain found, create a default brain object
+            if (!brain) {
+                console.log('No brain found, creating default brain object');
+                brain = {
+                    _id: currentBrainId,
+                    title: 'General Brain',
+                    slug: 'general-brain'
+                };
+            }
+            
             const pageData = {
                 originalMessageId: message.id,
-                title: `Page from ${message.responseModel || 'AI'} Response`,
+                title: title,
                 content: message.response,
-                chatId: message.chatId,
+                chatId: params.id,
                 user: message.user,
-                brain: message.brain,
+                brain: brain,
                 model: message.model,
                 tokens: message.tokens,
                 responseModel: message.responseModel,
                 responseAPI: message.responseAPI,
-                companyId: message.companyId
+                companyId: companyId
             };
             
-            await createPageFromResponse(pageData);
+            console.log('handleAddToPages - pageData being sent:', JSON.stringify(pageData, null, 2));
+            const result = await createPageFromResponse(pageData);
+            console.log('Page result:', result);
+            
+            // Show appropriate message based on whether it's an update or create
+            if (result.isUpdate) {
+                Toast('Page updated successfully!', 'success');
+            } else {
+                Toast('Page added successfully!', 'success');
+            }
         } catch (error) {
             console.error('Error creating page:', error);
+            Toast('Failed to add page. Please try again.', 'error');
         }
-    }, [createPageFromResponse]);
+    }, [createPageFromResponse, brainData, params.id, companyId]);
+
+    const handleUploadToMinIO = useCallback(async (message: any) => {
+        console.log('handleUploadToMinIO called with message:', message);
+        try {
+            const documentData = {
+                content: message.response,
+                filename: `document_${message.id}_${Date.now()}.txt`,
+                contentType: 'text/plain'
+            };
+            
+            console.log('handleUploadToMinIO - documentData being sent:', JSON.stringify(documentData, null, 2));
+            await uploadDocumentToMinIO(documentData);
+        } catch (error) {
+            console.error('Error uploading document to MinIO:', error);
+        }
+    }, [uploadDocumentToMinIO]);
 
     const handleImageConversation = useCallback((files: UploadedFileType[]) => {
         const hasImage = files.some((file) => file?.mime_type?.startsWith('image/'));
@@ -1287,11 +1345,16 @@ const ChatPage = memo(() => {
                                                         }
                                                         copyToClipboard={copyToClipboard}
                                                         getAgentContent={getAgentContent}
-                                                        onAddToPages={() => {
-                                                            console.log('onAddToPages prop called for message:', m.id);
-                                                            handleAddToPages(m);
+                                                        onAddToPages={async (title: string) => {
+                                                            console.log('onAddToPages prop called for message:', m.id, 'with title:', title);
+                                                            await handleAddToPages(title, m);
+                                                        }}
+                                                        onUploadToMinIO={() => {
+                                                            console.log('onUploadToMinIO prop called for message:', m.id);
+                                                            handleUploadToMinIO(m);
                                                         }}
                                                         hasBeenEdited={editedResponses.has(m.id)}
+                                                        isAnswer={false}
                                                     />
                                                 }
                                                 {/* Hover Icons End */}
@@ -1370,11 +1433,16 @@ const ChatPage = memo(() => {
                                                         getPerplexityResponse={getPerplexityResponse}
                                                         getAIDocResponse={getAIDocResponse}
                                                         custom_gpt_id={persistTagData?.custom_gpt_id}
-                                                        onAddToPages={() => {
-                                                            console.log('onAddToPages prop called for message:', m.id);
-                                                            handleAddToPages(m);
+                                                        onAddToPages={async (title: string) => {
+                                                            console.log('onAddToPages prop called for message:', m.id, 'with title:', title);
+                                                            await handleAddToPages(title, m);
+                                                        }}
+                                                        onUploadToMinIO={() => {
+                                                            console.log('onUploadToMinIO prop called for message:', m.id);
+                                                            handleUploadToMinIO(m);
                                                         }}
                                                         hasBeenEdited={editedResponses.has(m.id)}
+                                                        isAnswer={true}
                                                     />
                                                 }
                                                 {/* Hover Icons End */}
